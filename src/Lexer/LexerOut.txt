@@ -1,0 +1,33 @@
+   1     0 IDENTIFIER      x
+   1     4 ASSIGN         
+   1     6 INTEGER         10
+   1     8 SEMICOLON      
+   2     1 IDENTIFIER      second
+   2     9 ASSIGN         
+   2    11 INTEGER         20
+   2    13 SEMICOLON      
+   3     1 IF             
+   3     4 LEFT_PAREN     
+   3     5 IDENTIFIER      second
+   3    12 SUBTRACT       
+   3    14 INTEGER         19
+   3    16 RIGHT_PAREN    
+   3    18 LEFT_BRACE     
+   0     0 PRINT          
+   4     3 IDENTIFIER      x
+   4     5 ADD            
+   4     7 INTEGER         1
+   4     8 SEMICOLON      
+   5     1 RIGHT_BRACE    
+   0     0 PRINT          
+   6     1 IDENTIFIER      x
+   6     2 MULTIPLY       
+   6     3 IDENTIFIER      second
+   6    10 ADD            
+   6    12 IDENTIFIER      second
+   6    18 DIVIDE         
+   6    19 IDENTIFIER      x
+   6    20 MULTIPLY       
+   6    21 INTEGER         3
+   6    22 SEMICOLON      
+   7     1 END            

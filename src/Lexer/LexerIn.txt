@@ -1,0 +1,6 @@
+@x  = 10;
+@second = 20;
+if (second - 19) {
+  x + 1;
+}
+x*second + second/x*3;
