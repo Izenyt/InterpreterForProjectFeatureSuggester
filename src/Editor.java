@@ -6,16 +6,11 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.plaf.metal.MetalLookAndFeel;
 import javax.swing.plaf.metal.OceanTheme;
-import javax.swing.text.Document;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Scanner;
 import java.util.Stack;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Editor extends JFrame implements ActionListener {
     // Text component
@@ -28,6 +23,7 @@ public class Editor extends JFrame implements ActionListener {
     Editor() {
         // Create a frame
         f = new JFrame("Editor");
+        f.setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         try {
             // Set metl look and feel
@@ -98,23 +94,66 @@ public class Editor extends JFrame implements ActionListener {
         f.setJMenuBar(mb);
         f.add(t);
         f.setSize(500, 500);
-        f.show();
-
+        f.setVisible(true);
     }
 
-    class MyDocumentListener implements DocumentListener {
+    class MyDocumentListener implements DocumentListener{
 
-        public void insertUpdate(DocumentEvent e) { updateLog(e); }
+        public void insertUpdate(DocumentEvent e) {
+            updateLog(e);
+        }
 
-        public void removeUpdate(DocumentEvent e) { updateLog(e); }
+        public void removeUpdate(DocumentEvent e) {
+            updateLog(e);
+        }
 
         public void changedUpdate(DocumentEvent e) { }
 
-        boolean isIF = false;
-        boolean bool;
-        ArrayList<Character> characters = new ArrayList<>();
+        private boolean isIF = false;
+        private boolean bool;
+        private final ArrayList<Character> characters = new ArrayList<>();
 
+        //============================================================================
+        //Логика данного метода была такая создаётся список токенов при каждом вводе
+        //пользователя, когда пользователь вводит if метод сохраняет это состояние
+        //в отдельный список (TokensWithLastTokenIsIf) и меняет знаечение булевой
+        //переменной isTokensWithLastTokenIsIf на true после чего из tokens удаляются
+        //все другие токены, кроме токенов принадлежащие обрамляющему if это круглые
+        //и фигурные скобки и выражения в них. Но реализовать грамотное условие для
+        //проверки данного списка на вхождение всех токенов для обрамляющего if не смог.
+        //P.S. На счёт синтаксическое дерева,то у меня не получалось создавать его
+        //во время каждого пользовательского ввода, т.к. при его составление, сопровождается
+        //множеством разных проверок на правильность составления этого дерева.
+        //============================================================================
+
+        //private final StringBuilder stringBuilder = new StringBuilder();
+        //List<Token> TokensWithLastTokenIsIf = new ArrayList<Token>();
+        //boolean isTokensWithLastTokenIsIf = false;
+        /*
+        public void TokensWithOnlyElementsIf(StringBuilder str) {
+            Lexer lexer = Lexer.toLex(stringBuilder.toString());
+            List<Token> tokens = lexer.TokensList();
+            if(tokens.get(tokens.size() - 2).getTokenType().equals(TokenType.IF)) {
+                TokensWithLastTokenIsIf = lexer.TokensList();
+                isTokensWithLastTokenIsIf = true;
+            }
+            if(isTokensWithLastTokenIsIf) {
+                tokens.removeAll(TokensWithLastTokenIsIf);
+                for (int i = 0; i < tokens.size(); i++) {
+                    if (tokens.get(i).getTokenType().equals(TokenType.LEFT_PAREN)) {
+                        if (!tokens.get(i).getTokenType().equals(TokenType.RIGHT_PAREN)) continue;
+                    }
+                    else break;
+                    if (tokens.get(i).getTokenType().equals(TokenType.LEFT_BRACE)) {
+                        if(!tokens.get(i).getTokenType().equals(TokenType.RIGHT_BRACE)) continue;
+                    }
+                }
+            }
+            stringBuilder.setLength(0);
+        }
+        */
         public void updateLog(DocumentEvent e) throws StringIndexOutOfBoundsException {
+            //TokensWithOnlyElementsIf(stringBuilder.append(t.getText()));
             char lastChar = ' ';
             char preLastChar = ' ';
 
@@ -144,10 +183,10 @@ public class Editor extends JFrame implements ActionListener {
                 } else  {
                     bool = tmp;
                 }
-
             }
         }
     }
+
     public static boolean isParenthesisMatch(String str) {
         boolean isBracketsBalance = false;
         boolean isParenthesesBalance = false;
@@ -256,8 +295,8 @@ public class Editor extends JFrame implements ActionListener {
 
                     try {
                         // String
-                        String s1 = "";
-                        StringBuilder sl = new StringBuilder();
+                        String s1;
+                        StringBuilder sl;
 
                         // File reader
                         FileReader fr = new FileReader(fi);
@@ -302,28 +341,16 @@ public class Editor extends JFrame implements ActionListener {
                 }
                 try {
                     Lexer lexer = Lexer.toLex();
-                    lexer.printTokens();
-                    Parser parser = new Parser();
-                    parser.printAST();
-                    Interpreter interpreter = Interpreter.toInterpret();
-                    interpreter.printInterpret();
+                    Parser parser = new Parser(lexer.TokensList());
+                    parser.AST(parser.parse());
+
+                    Interpreter interpreter = Interpreter.toInterpret(parser.printAST());
+                    JOptionPane.showMessageDialog(f, interpreter.printInterpret());
                 }
                 catch (FileNotFoundException ee) {
                     ee.printStackTrace();
                 }
-
-                String pathToFile = "src\\Interpreter\\Interpreter.txt";
-                File fileInterpreter = new File(pathToFile);
-
-                StringBuilder output = new StringBuilder("");
-                try (Scanner scanner = new Scanner(fileInterpreter)) {
-                    while (scanner.hasNext()) {
-                        output.append(scanner.nextLine());
-                    }
-                } catch (FileNotFoundException ex) {
-                    output.append("No file found: ").append(pathToFile);
-                }
-                JOptionPane.showMessageDialog(f, output.toString());
+                break;
 
         }
     }
@@ -331,5 +358,6 @@ public class Editor extends JFrame implements ActionListener {
     public static void main(String[] args)
     {
         Editor e = new Editor();
+        e.setSize(720, 480);
     }
 }
