@@ -1,163 +1,66 @@
 package Parser;
 
 import javax.swing.*;
-import java.awt.*;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.util.Scanner;
-import java.util.StringTokenizer;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import Token.Token;
+import TokenType.TokenType;
+import NodeType.NodeType;
+import Node.Node;
 
 public class Parser {
-    private static Component parserFrame;
-    private List<Token> source;
+    private final List<Token> tokens;
     private Token token;
     private int position;
 
     protected static final Logger LOGGER = Logger.getLogger(Parser.class.getName());
 
-    private static class Node {
-        public NodeType nodeType;
-        public Node left;
-        public Node right;
-        public String value;
-
-        Node(NodeType nodeType, Node left, Node right, String value) {
-            this.nodeType = nodeType;
-            this.left = left;
-            this.right = right;
-            this.value = value;
-        }
-
-        public static Node makeNode(NodeType nodetype, Node left, Node right) { return new Node(nodetype, left, right, ""); }
-        public static Node makeNode(NodeType nodetype, Node left) {
-            return new Node(nodetype, left, null, "");
-        }
-        public static Node makeLeaf(NodeType nodetype, String value) { return new Node(nodetype, null, null, value); }
-    }
-
-    private static class Token {
-        public TokenType tokentype;
-        public String value;
-        public int line;
-        public int pos;
-
-        Token(TokenType token, String value, int line, int pos) {
-            this.tokentype = token; this.value = value; this.line = line; this.pos = pos;
-        }
-        @Override
-        public String toString() {
-            return String.format("%5d  %5d %-15s %s", this.line, this.pos, this.tokentype, this.value);
-        }
-    }
-
-    private enum TokenType {
-        END(false, false, -1, NodeType.ND_NONE),
-        MULTIPLY(false, true, 13, NodeType.ND_MUL),
-        DIVIDE(false, true, 13, NodeType.ND_DIV),
-        MOD(false, true, 13, NodeType.ND_MOD),
-        ADD(false, true, 12, NodeType.ND_ADD),
-        SUBTRACT(false, true, 12, NodeType.ND_SUB),
-        NEGATE(false, false, 14, NodeType.ND_NEGATE),
-        LESS(false, true, 10, NodeType.ND_LESS),
-        GREATER(false, true, 10, NodeType.ND_GREATER),
-        ASSIGN(false, false, -1, NodeType.ND_ASSIGN),
-        IF(false, false, -1, NodeType.ND_IF),
-        ELSE(false, false, -1, NodeType.ND_NONE),
-        PRINT(false, false, -1, NodeType.ND_NONE),
-        LEFT_PAREN(false, false, -1, NodeType.ND_NONE),
-        RIGHT_PAREN(false, false, -1, NodeType.ND_NONE),
-        LEFT_BRACE(false, false, -1, NodeType.ND_NONE),
-        RIGHT_BRACE(false, false, -1, NodeType.ND_NONE),
-        SEMICOLON(false, false, -1, NodeType.ND_NONE),
-        COMMA(false, false, -1, NodeType.ND_NONE),
-        IDENTIFIER(false, false, -1, NodeType.ND_IDENTIFIER),
-        INTEGER(false, false, -1, NodeType.ND_INTEGER);
-
-        private final int precedence;
-        private final boolean rightAssoc;
-        private final boolean isBinary;
-        private final NodeType nodeType;
-
-        TokenType(boolean rightAssoc, boolean isBinary, int precedence, NodeType nodeType) {
-            this.rightAssoc = rightAssoc;
-            this.isBinary = isBinary;
-            this.precedence = precedence;
-            this.nodeType = nodeType;
-        }
-
-        boolean isRightAssoc() { return this.rightAssoc; }
-        boolean isBinary() { return this.isBinary; }
-        int getPrecedence() { return this.precedence; }
-        NodeType getNodeType() { return this.nodeType; }
-    }
-
-    private enum NodeType {
-        ND_NONE(""), ND_IDENTIFIER("IDENTIFIER"), ND_INTEGER("INTEGER"), ND_SEQUENCE("SEQUENCE"),
-        ND_IF("IF"), ND_PRINT("PRINT"),
-        ND_ASSIGN("ASSIGN"), ND_NEGATE("NEGATE"), ND_MUL("MULTIPLY"), ND_DIV("DIVIDE"), ND_MOD("MOD"), ND_ADD("ADD"),
-        ND_SUB("SUBTRACT"), ND_LESS("LESS"),
-        ND_GREATER("GREATER");
-
-        private final String name;
-
-        NodeType(String name) {
-            this.name = name;
-        }
-
-        @Override
-        public String toString() { return this.name; }
-    }
-
     private static void error(int line, int pos, String msg) {
         if (line > 0 && pos > 0) {
             LOGGER.log(Level.WARNING,String.format("%s in line %d, pos %d\n", msg, line, pos));
-            JOptionPane.showMessageDialog(parserFrame, String.format("Предупреждение: %s in line %d, pos %d\n", msg, line, pos));
+            JOptionPane.showMessageDialog(null, String.format("Excepting(Parser): %s in line %d, pos %d\n", msg, line, pos));
         } else {
             LOGGER.log(Level.SEVERE,msg);
-            JOptionPane.showMessageDialog(parserFrame, msg);
+            JOptionPane.showMessageDialog(null, msg);
         }
         Thread.currentThread().stop();
     }
 
-    private Parser(List<Token> source) {
-        this.source = source;
+    public Parser(List<Token> tokens) {
+        this.tokens = tokens;
         this.token = null;
         this.position = 0;
     }
+
     void nextToken() {
-        this.token = this.source.get(this.position++);
+        this.token = this.tokens.get(this.position++);
     }
+
     Node expr(int p) {
         Node result = null, node;
         TokenType op;
         int q;
 
-        if (this.token.tokentype == TokenType.LEFT_PAREN) {
+        if (this.token.getTokenType() == TokenType.LEFT_PAREN) {
             result = parenExpr();
-        } else if (this.token.tokentype == TokenType.ADD || this.token.tokentype == TokenType.SUBTRACT) {
-            op = (this.token.tokentype == TokenType.SUBTRACT) ? TokenType.NEGATE : TokenType.ADD;
+        } else if (this.token.getTokenType() == TokenType.ADD || this.token.getTokenType() == TokenType.SUBTRACT) {
+            op = (this.token.getTokenType() == TokenType.SUBTRACT) ? TokenType.NEGATE : TokenType.ADD;
             nextToken();
             node = expr(TokenType.NEGATE.getPrecedence());
             result = (op == TokenType.NEGATE) ? Node.makeNode(NodeType.ND_NEGATE, node) : node;
-        } else if (this.token.tokentype == TokenType.IDENTIFIER) {
-            result = Node.makeLeaf(NodeType.ND_IDENTIFIER, this.token.value);
+        } else if (this.token.getTokenType() == TokenType.IDENTIFIER) {
+            result = Node.makeLeaf(NodeType.ND_IDENTIFIER, this.token.getValue());
             nextToken();
-        } else if (this.token.tokentype == TokenType.INTEGER) {
-            result = Node.makeLeaf(NodeType.ND_INTEGER, this.token.value);
+        } else if (this.token.getTokenType() == TokenType.INTEGER) {
+            result = Node.makeLeaf(NodeType.ND_INTEGER, this.token.getValue());
             nextToken();
         } else {
-            error(this.token.line, this.token.pos, "Expecting a primary, found: " + this.token.tokentype);
+            error(this.token.getLine(), this.token.getPos(), "Expecting(Parser) a primary, found: " + this.token.getTokenType());
         }
 
-        while (this.token.tokentype.isBinary() && this.token.tokentype.getPrecedence() >= p) {
-            op = this.token.tokentype;
+        while (this.token.getTokenType().isBinary() && this.token.getTokenType().getPrecedence() >= p) {
+            op = this.token.getTokenType();
             nextToken();
             q = op.getPrecedence();
             if (!op.isRightAssoc()) {
@@ -168,68 +71,72 @@ public class Parser {
         }
         return result;
     }
+
     Node parenExpr() {
         expect("parenExpr", TokenType.LEFT_PAREN);
         Node node = expr(0);
         expect("parenExpr", TokenType.RIGHT_PAREN);
         return node;
     }
+
     void expect(String msg, TokenType s) {
-        if (this.token.tokentype == s) {
+        if (this.token.getTokenType() == s) {
             nextToken();
             return;
         }
-        error(this.token.line, this.token.pos, msg + ": Expecting '" + s + "', found: '" + this.token.tokentype + "'");
+        error(this.token.getLine(), this.token.getPos(), msg + ": Expecting(Parser) '" + s + "', found: '" + this.token.getTokenType() + "'");
     }
+
     Node statement() {
         Node s, s2, t = null, e, v;
-        if (this.token.tokentype == TokenType.IF) {
+
+        if (this.token.getTokenType() == TokenType.IF) {
             nextToken();
             e = parenExpr();
             s = statement();
             s2 = null;
-            if (this.token.tokentype == TokenType.ELSE) {
+            if (this.token.getTokenType() == TokenType.ELSE) {
                 nextToken();
                 s2 = statement();
             }
             t = Node.makeNode(NodeType.ND_IF, e, Node.makeNode(NodeType.ND_IF, s, s2));
-        } else if (this.token.tokentype == TokenType.PRINT) {
+        } else if (this.token.getTokenType() == TokenType.PRINT) {
             nextToken();
             while (true) {
                 e = Node.makeNode(NodeType.ND_PRINT, expr(0), null);
                 t = Node.makeNode(NodeType.ND_SEQUENCE, t, e);
-                if (this.token.tokentype != TokenType.COMMA) {
+                if (this.token.getTokenType() != TokenType.COMMA) {
                     break;
                 }
                 nextToken();
             }
             expect("Print", TokenType.SEMICOLON);
-        } else if (this.token.tokentype == TokenType.SEMICOLON) {
+        } else if (this.token.getTokenType() == TokenType.SEMICOLON) {
             nextToken();
-        } else if (this.token.tokentype == TokenType.IDENTIFIER) {
-            v = Node.makeLeaf(NodeType.ND_IDENTIFIER, this.token.value);
+        } else if (this.token.getTokenType() == TokenType.IDENTIFIER) {
+            v = Node.makeLeaf(NodeType.ND_IDENTIFIER, this.token.getValue());
             nextToken();
-            if(this.token.tokentype == TokenType.ADD) {
+            if(this.token.getTokenType() == TokenType.ADD) {
                 expect("assign", TokenType.ADD);
                 e = expr(0);
                 t = Node.makeNode(NodeType.ND_ADD, v, e);
             }
-            else if(this.token.tokentype == TokenType.SUBTRACT) {
+            else if(this.token.getTokenType() == TokenType.SUBTRACT) {
                 expect("assign", TokenType.SUBTRACT);
                 e = expr(0);
-                t = Node.makeNode(NodeType.ND_SUB, v, e);
+                t = Node.makeNode(NodeType.ND_SUBTRACT, v, e);
             }
-            else if(this.token.tokentype == TokenType.MULTIPLY) {
+            else if(this.token.getTokenType() == TokenType.MULTIPLY) {
                 expect("assign", TokenType.MULTIPLY);
                 e = expr(0);
-                t = Node.makeNode(NodeType.ND_MUL, v, e);
+                t = Node.makeNode(NodeType.ND_MULTIPLY, v, e);
             }
-            else if(this.token.tokentype == TokenType.DIVIDE) {
+            else if(this.token.getTokenType() == TokenType.DIVIDE) {
                 expect("assign", TokenType.DIVIDE);
                 e = expr(0);
-                t = Node.makeNode(NodeType.ND_DIV, v, e);
+                t = Node.makeNode(NodeType.ND_DIVIDE, v, e);
             }
-            else if(this.token.tokentype == TokenType.MOD) {
+            else if(this.token.getTokenType() == TokenType.MOD) {
                 expect("assign", TokenType.MOD);
                 e = expr(0);
                 t = Node.makeNode(NodeType.ND_MOD, v, e);
@@ -240,103 +147,48 @@ public class Parser {
                 t = Node.makeNode(NodeType.ND_ASSIGN, v, e);
             }
             expect("assign", TokenType.SEMICOLON);
-        } else if (this.token.tokentype == TokenType.LEFT_BRACE) {
+        } else if (this.token.getTokenType() == TokenType.LEFT_BRACE) {
             nextToken();
-            while (this.token.tokentype != TokenType.RIGHT_BRACE && this.token.tokentype != TokenType.END) {
+            while (this.token.getTokenType() != TokenType.RIGHT_BRACE && this.token.getTokenType() != TokenType.END) {
                 t = Node.makeNode(NodeType.ND_SEQUENCE, t, statement());
             }
             expect("LBrace", TokenType.RIGHT_BRACE);
-        } else if (this.token.tokentype == TokenType.END) {
-        } else {
-            error(this.token.line, this.token.pos, "Expecting start of statement, found: " + this.token.tokentype);
+        }
+        else {
+            error(this.token.getLine(), this.token.getPos(), "Expecting(Parser) start of statement, found: " + this.token.getTokenType());
         }
         return t;
     }
 
     public Node parse() {
-        Node t = null;
+        Node node = null;
         nextToken();
-        while (this.token.tokentype != TokenType.END) {
-            t = Node.makeNode(NodeType.ND_SEQUENCE, t, statement());
+        while (this.token.getTokenType() != TokenType.END) {
+            node = Node.makeNode(NodeType.ND_SEQUENCE, node, statement());
         }
-        return t;
+        return node;
     }
 
-    private static final String path = "src\\Parser\\ParserOut.txt";
-    private static final File file = new File(path);
     private static String outputString = "";
 
-    public void printAST() throws FileNotFoundException {
-        try (PrintWriter printWriter = new PrintWriter(file.getPath())) {
-            printWriter.println(outputString);
-        }
+    public String printAST() {
+        String tempOutputString = outputString;
         outputString = "";
+        return tempOutputString;
     }
 
-    private void AST(Node t) {
+    public void AST(Node t) {
         if (t == null) {
             outputString += ";\n";
         } else {
-            outputString += String.format("%-14s", t.nodeType);
-            if (t.nodeType == NodeType.ND_IDENTIFIER || t.nodeType == NodeType.ND_INTEGER) {
-                outputString += " " + t.value + "\n";
+            outputString += String.format("%-14s", t.getNodeType());
+            if (t.getNodeType() == NodeType.ND_IDENTIFIER || t.getNodeType() == NodeType.ND_INTEGER) {
+                outputString += " " + t.getValue() + "\n";
             } else {
                 outputString += "\n";
-                AST(t.left);
-                AST(t.right);
+                AST(t.getLeft());
+                AST(t.getRight());
             }
-        }
-    }
-
-    public Parser() {
-        StringBuilder value;
-        String token;
-        int line, pos;
-        List<Token> list = new ArrayList<>();
-        Map<String, TokenType> strToTokens = new HashMap<>();
-
-        strToTokens.put("END", TokenType.END);
-        strToTokens.put("MULTIPLY", TokenType.MULTIPLY);
-        strToTokens.put("DIVIDE", TokenType.DIVIDE);
-        strToTokens.put("MOD", TokenType.MOD);
-        strToTokens.put("ADD", TokenType.ADD);
-        strToTokens.put("SUBTRACT", TokenType.SUBTRACT);
-        strToTokens.put("LESS", TokenType.LESS);
-        strToTokens.put("GREATER", TokenType.GREATER);
-        strToTokens.put("ASSIGN", TokenType.ASSIGN);
-        strToTokens.put("IF", TokenType.IF);
-        strToTokens.put("ELSE", TokenType.ELSE);
-        strToTokens.put("PRINT", TokenType.PRINT);
-        strToTokens.put("LEFT_PAREN", TokenType.LEFT_PAREN);
-        strToTokens.put("RIGHT_PAREN", TokenType.RIGHT_PAREN);
-        strToTokens.put("LEFT_BRACE", TokenType.LEFT_BRACE);
-        strToTokens.put("RIGHT_BRACE", TokenType.RIGHT_BRACE);
-        strToTokens.put("SEMICOLON", TokenType.SEMICOLON);
-        strToTokens.put("COMMA", TokenType.COMMA);
-        strToTokens.put("IDENTIFIER", TokenType.IDENTIFIER);
-        strToTokens.put("INTEGER", TokenType.INTEGER);
-
-        try(Scanner s = new Scanner(new File("src\\Lexer\\LexerOut.txt"))) {
-            while (s.hasNext()) {
-                String str = s.nextLine();
-                StringTokenizer st = new StringTokenizer(str);
-                line = Integer.parseInt(st.nextToken());
-                pos = Integer.parseInt(st.nextToken());
-                token = st.nextToken();
-                value = new StringBuilder();
-
-                while (st.hasMoreTokens()) {
-                    value.append(st.nextToken()).append(" ");
-                }
-
-                if (strToTokens.containsKey(token)) {
-                    list.add(new Token(strToTokens.get(token), value.toString(), line, pos));
-                }
-            }
-            Parser p = new Parser(list);
-            p.AST(p.parse());
-        } catch (Exception e) {
-            error(-1, -1, "Exception: " + e.getMessage());
         }
     }
 }

@@ -4,17 +4,18 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.io.PrintWriter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import Token.Token;
+import TokenType.TokenType;
 
 public class Lexer {
     private int line;
     private int position;
     private char chr;
     private int pos;
-    private String str;
+    private final String str;
 
     public Lexer(String source) {
         this.line = 1;
@@ -25,56 +26,18 @@ public class Lexer {
     }
 
     protected static final Logger LOGGER = Logger.getLogger(Lexer.class.getName());
-    private static final String PATH = "src\\Lexer\\LexerOut.txt";
-    private static final File FILE = new File(PATH);
 
     private static final Map<String, TokenType> KEYWORDS = Map.of("if", TokenType.IF, "else", TokenType.ELSE, "print", TokenType.PRINT);
 
-    private Pattern intPattern = Pattern.compile("[0-9]+");
+    private final Pattern intPattern = Pattern.compile("[0-9]+");
 
     protected Matcher intMatcher;
 
-    static class Token {
-        public TokenType tokentype;
-        public String value;
-        public int line;
-        public int pos;
-
-        Token(TokenType token, String value, int line, int pos) {
-            this.tokentype = token;
-            this.value = value;
-            this.line = line;
-            this.pos = pos;
-        }
-
-        @Override
-        public String toString() {
-            String result = String.format("%4d  %4d %-15s", this.line, this.pos, this.tokentype);
-            switch (this.tokentype) {
-                case INTEGER:
-                case IDENTIFIER:
-                    result += String.format(" %s", value);
-                    break;
-                case EXPRESSION:
-                    result = String.format("%4d  %4d %-15s", this.line, this.pos, TokenType.IDENTIFIER);
-                    result += String.format(" %s", value);
-                    break;
-            }
-            return result;
-        }
-    }
-
-    private enum TokenType {
-        END, MULTIPLY, DIVIDE, MOD, ADD, SUBTRACT,
-        LESS, GREATER, ASSIGN, IF, ELSE, LEFT_PAREN, RIGHT_PAREN, PRINT,
-        LEFT_BRACE, RIGHT_BRACE, SEMICOLON, COMMA, IDENTIFIER, INTEGER, EXPRESSION
-    }
-
     private static void error(int line, int pos, String msg) {
         if (line > 0 && pos > 0) {
-            LOGGER.log(Level.SEVERE, String.format("Lexer: %s in line %d, pos %d\n", msg, line, pos));
+            LOGGER.log(Level.SEVERE, String.format("Exception(Lexer): %s in line %d, pos %d\n", msg, line, pos));
         } else {
-            LOGGER.log(Level.SEVERE,("Lexer: " + msg));
+            LOGGER.log(Level.SEVERE,("Exception(Lexer): " + msg));
         }
     }
 
@@ -95,7 +58,6 @@ public class Lexer {
     private Token idOrInt(int line, int pos) {
         boolean isNumber = true;
         StringBuilder text = new StringBuilder();
-
         while (Character.isAlphabetic(this.chr) || Character.isDigit(this.chr) || this.chr == '@') {
             text.append(this.chr);
             if (!Character.isDigit(this.chr)) {
@@ -191,54 +153,71 @@ public class Lexer {
         }
     }
 
-
-    public void printTokens() throws FileNotFoundException {
+    public List<Token> TokensList() {
         Token t;
         List<Token> tokens = new LinkedList<>();
-
-        while ((t = getToken()).tokentype != TokenType.END) {
+        while ((t = getToken()).getTokenType() != TokenType.END) {
             tokens.add(t);
         }
 
-        for (int i = 0; i < tokens.size() - 1; i++) {
-            if((i == 0 && tokens.get(0).tokentype == TokenType.INTEGER)
-            || (i == 0 && tokens.get(0).tokentype == TokenType.SUBTRACT)) {
-                tokens.add(i, new Token(KEYWORDS.get("print"), "", 0, 0));
+        for (int i = 0; i < tokens.size() - 2; i++) {
+            System.out.println(tokens.get(i).getTokenType());
+            if(((tokens.get(0).getTokenType()).equals(TokenType.INTEGER)) || ((tokens.get(0).getTokenType()).equals(TokenType.SUBTRACT))) {
+                tokens.add(0, new Token(KEYWORDS.get("print"), "", 0, 0));
                 i++;
             }
-            if((tokens.get(i).tokentype == TokenType.SEMICOLON && tokens.get(i + 1).tokentype == TokenType.EXPRESSION)
-            || (tokens.get(i).tokentype == TokenType.RIGHT_BRACE && tokens.get(i + 1).tokentype == TokenType.EXPRESSION)
-            ||(tokens.get(i).tokentype == TokenType.LEFT_BRACE && tokens.get(i + 1).tokentype == TokenType.EXPRESSION)
-            ||(tokens.get(i).tokentype == TokenType.SEMICOLON && tokens.get(i + 1).tokentype == TokenType.INTEGER)
-            ||(tokens.get(i).tokentype == TokenType.RIGHT_BRACE && tokens.get(i + 1).tokentype == TokenType.INTEGER)
-            ||(tokens.get(i).tokentype == TokenType.LEFT_BRACE && tokens.get(i + 1).tokentype == TokenType.INTEGER)
-            ||(tokens.get(i).tokentype == TokenType.SEMICOLON && tokens.get(i + 1).tokentype == TokenType.SUBTRACT)
-            ||(tokens.get(i).tokentype == TokenType.RIGHT_BRACE && tokens.get(i + 1).tokentype == TokenType.SUBTRACT)
-            ||(tokens.get(i).tokentype == TokenType.LEFT_BRACE && tokens.get(i + 1).tokentype == TokenType.SUBTRACT))
+
+            if(((tokens.get(i).getTokenType() == TokenType.SEMICOLON && tokens.get(i + 1).getTokenType() == TokenType.EXPRESSION)
+                    || (tokens.get(i).getTokenType() == TokenType.RIGHT_BRACE && tokens.get(i + 1).getTokenType() == TokenType.EXPRESSION)
+                    || (tokens.get(i).getTokenType() == TokenType.LEFT_BRACE && tokens.get(i + 1).getTokenType() == TokenType.EXPRESSION)
+                    || (tokens.get(i).getTokenType() == TokenType.SEMICOLON && tokens.get(i + 1).getTokenType() == TokenType.INTEGER)
+                    || (tokens.get(i).getTokenType() == TokenType.RIGHT_BRACE && tokens.get(i + 1).getTokenType() == TokenType.INTEGER)
+                    || (tokens.get(i).getTokenType() == TokenType.LEFT_BRACE && tokens.get(i + 1).getTokenType() == TokenType.INTEGER)
+                    || (tokens.get(i).getTokenType() == TokenType.SEMICOLON && tokens.get(i + 1).getTokenType() == TokenType.SUBTRACT)
+                    || (tokens.get(i).getTokenType() == TokenType.RIGHT_BRACE && tokens.get(i + 1).getTokenType() == TokenType.SUBTRACT)
+                    || (tokens.get(i).getTokenType() == TokenType.LEFT_BRACE && tokens.get(i + 1).getTokenType() == TokenType.SUBTRACT))
+                && tokens.get(i + 2).getTokenType() != TokenType.ASSIGN)
             {
                 tokens.add(i + 1, new Token(KEYWORDS.get("print"), "", 0, 0));
                 i++;
             }
         }
-
-        try (PrintWriter printWriter = new PrintWriter(FILE.getPath())) {
-            for (Token token : tokens) {
-                printWriter.println(token);
+        for (int i = 0; i < tokens.size(); i++) {
+            if(tokens.get(i).getTokenType().equals(TokenType.EXPRESSION)) {
+                tokens.set(i, new Token(TokenType.IDENTIFIER, tokens.get(i).getValue(),tokens.get(i).getLine(),tokens.get(i).getPos()));
             }
-            printWriter.println(new Token(TokenType.END, "", this.line, this.pos));
         }
-
+        tokens.add(new Token(TokenType.END, "", this.line, this.pos));
+        return tokens;
     }
 
     public static Lexer toLex() throws FileNotFoundException {
         File f = new File("src\\Lexer\\LexerIn.txt");
         Scanner s = new Scanner(f);
         StringBuilder source = new StringBuilder();
-
         while (s.hasNext()) {
             source.append(s.nextLine()).append("\n");
         }
-
+        if(source.length() == 0) {
+            source.append(" ");
+            return new Lexer(source.toString());
+        }
         return new Lexer(source.toString());
     }
+
+    /*
+    public static Lexer toLex(String str) {
+        str = str.replaceAll("[^A-Za-zА-Яа-я0-9@(){}=;]", "");
+        Scanner s = new Scanner(str);
+        StringBuilder source = new StringBuilder();
+        while (s.hasNext()) {
+            source.append(s.nextLine()).append("\n");
+        }
+        if(source.length() == 0) {
+            source.append(" ");
+            return new Lexer(source.toString());
+        }
+        return new Lexer(source.toString());
+    }
+    */
 }
